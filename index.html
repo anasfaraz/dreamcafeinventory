@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#060c1d" />
+  <meta name="description" content="Dream Cafe Stock Manager — Mobile inventory management with WhatsApp alerts." />
+  <title>Dream Cafe Stock Manager</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="css/style.css" />
+
+  <!-- CDN Libraries -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+  <!-- ══════════════════════ MOBILE HEADER ══════════════════════ -->
+  <header id="mobile-header">
+    <div class="header-brand">
+      <div class="header-logo">☕</div>
+      <div class="header-text">
+        <div class="header-app-name">Dream Cafe</div>
+        <div class="header-page-title" id="header-page-title">Dashboard</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-header-icon" onclick="App.navigate('inventory')" title="Stock Alerts" aria-label="View inventory alerts">
+        <i data-lucide="bell"></i>
+        <span class="alert-badge" id="alert-badge" style="display:none">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ══════════════════════ MAIN CONTENT ══════════════════════ -->
+  <main id="main-content">
+
+    <!-- ───────────────── DASHBOARD ───────────────── -->
+    <section id="section-dashboard" class="section active">
+
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card card-total">
+          <div class="stat-card-row">
+            <div class="stat-icon"><i data-lucide="package-2"></i></div>
+          </div>
+          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-label">Total Items</div>
+        </div>
+
+        <div class="stat-card card-instock">
+          <div class="stat-card-row">
+            <div class="stat-icon"><i data-lucide="check-circle-2"></i></div>
+          </div>
+          <div class="stat-value" id="stat-instock">0</div>
+          <div class="stat-label">In Stock</div>
+        </div>
+
+        <div class="stat-card card-low">
+          <div class="stat-card-row">
+            <div class="stat-icon"><i data-lucide="alert-triangle"></i></div>
+          </div>
+          <div class="stat-value" id="stat-low">0</div>
+          <div class="stat-label">Low Stock</div>
+        </div>
+
+        <div class="stat-card card-out">
+          <div class="stat-card-row">
+            <div class="stat-icon"><i data-lucide="x-circle"></i></div>
+          </div>
+          <div class="stat-value" id="stat-out">0</div>
+          <div class="stat-label">Out of Stock</div>
+        </div>
+      </div>
+
+      <!-- Stock Alerts Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <i data-lucide="bell-ring"></i>
+            Stock Alerts
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="App.navigate('inventory')">View All</button>
+        </div>
+        <div class="card-body">
+          <div id="dashboard-alerts">
+            <div class="empty-state"><p>Loading…</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Updates Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <i data-lucide="activity"></i>
+            Recent Updates
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="App.navigate('history')">History</button>
+        </div>
+        <div class="card-body">
+          <div id="dashboard-recent">
+            <div class="empty-state"><p>Loading…</p></div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ───────────────── INVENTORY ───────────────── -->
+    <section id="section-inventory" class="section">
+      <div class="page-header">
+        <div class="page-title-wrap">
+          <h1 class="page-title">Inventory</h1>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="App.navigate('add-item')">
+          <i data-lucide="plus"></i> Add
+        </button>
+      </div>
+
+      <!-- Search -->
+      <div class="search-wrap">
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" id="inv-search" placeholder="Search items…" autocomplete="off" />
+      </div>
+
+      <!-- Category chips -->
+      <div class="cat-chips" id="inv-category-chips">
+        <button class="cat-chip active" data-cat="all">All</button>
+      </div>
+
+      <!-- Mini stats -->
+      <div class="inv-mini-stats">
+        <span class="inv-mini-stat">Total: <strong id="inv-stats-total">0</strong></span>
+        <span class="inv-mini-stat text-warning">Low: <strong id="inv-stats-low">0</strong></span>
+        <span class="inv-mini-stat text-danger">Out: <strong id="inv-stats-out">0</strong></span>
+      </div>
+
+      <!-- Inventory Cards -->
+      <div id="inventory-cards">
+        <div class="empty-state"><p>Loading…</p></div>
+      </div>
+    </section>
+
+    <!-- ───────────────── ADD NEW ITEM ───────────────── -->
+    <section id="section-add-item" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Add New Item</h1>
+          <div class="page-subtitle">Add a product to inventory</div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <form id="add-item-form" onsubmit="return false;">
+
+          <div class="form-group">
+            <label class="form-label" for="ai-name">Item Name <span>*</span></label>
+            <input type="text" id="ai-name" placeholder="e.g. Oat Milk" autocomplete="off" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="ai-category">Category <span>*</span></label>
+            <input type="text" id="ai-category" placeholder="e.g. Dairy, Beverage…" list="cat-list" autocomplete="off" />
+            <datalist id="cat-list">
+              <option value="Dairy"></option>
+              <option value="Beverage"></option>
+              <option value="Grocery"></option>
+              <option value="Bakery"></option>
+              <option value="Meat"></option>
+              <option value="Condiment"></option>
+              <option value="Supplies"></option>
+              <option value="Other"></option>
+            </datalist>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="ai-unit">Unit <span>*</span></label>
+            <select id="ai-unit">
+              <option value="KG">KG</option>
+              <option value="Gram">Gram</option>
+              <option value="Liter">Liter</option>
+              <option value="Piece">Piece</option>
+              <option value="Packet">Packet</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="ai-current">Current Stock <span>*</span></label>
+              <input type="number" id="ai-current" placeholder="0" min="0" step="0.01" inputmode="decimal" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="ai-minimum">Min Stock <span>*</span></label>
+              <input type="number" id="ai-minimum" placeholder="0" min="0" step="0.01" inputmode="decimal" />
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary btn-lg btn-block" id="btn-add-item-submit">
+              <i data-lucide="plus-circle"></i> Add Item
+            </button>
+            <button type="button" class="btn btn-ghost btn-block" onclick="App.navigate('inventory')">
+              Cancel
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </section>
+
+    <!-- ───────────────── STOCK IN ───────────────── -->
+    <section id="section-stock-in" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Stock In</h1>
+          <div class="page-subtitle">Record stock received</div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-group">
+          <label class="form-label" for="si-item-select">Select Item <span>*</span></label>
+          <select id="si-item-select">
+            <option value="">-- Select Item --</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="si-qty">Quantity Added <span>*</span></label>
+            <input type="number" id="si-qty" placeholder="0" min="0.01" step="0.01" inputmode="decimal" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="si-date">Date <span>*</span></label>
+            <input type="date" id="si-date" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="si-notes">Notes</label>
+          <textarea id="si-notes" placeholder="e.g. Fresh delivery from supplier…"></textarea>
+        </div>
+
+        <!-- Live Preview -->
+        <div class="preview-box" id="si-preview" style="display:none;">
+          <span class="preview-icon">📦</span>
+          <span id="si-preview-text"></span>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-success btn-lg btn-block" id="btn-stock-in-submit">
+            <i data-lucide="arrow-down-circle"></i> Confirm Stock In
+          </button>
+          <button type="button" class="btn btn-ghost btn-block" onclick="App.navigate('dashboard')">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────── STOCK OUT ───────────────── -->
+    <section id="section-stock-out" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Stock Out</h1>
+          <div class="page-subtitle">Record stock used</div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-group">
+          <label class="form-label" for="so-item-select">Select Item <span>*</span></label>
+          <select id="so-item-select">
+            <option value="">-- Select Item --</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="so-qty">Quantity Used <span>*</span></label>
+            <input type="number" id="so-qty" placeholder="0" min="0.01" step="0.01" inputmode="decimal" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="so-date">Date <span>*</span></label>
+            <input type="date" id="so-date" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="so-notes">Notes</label>
+          <textarea id="so-notes" placeholder="e.g. Used for morning service…"></textarea>
+        </div>
+
+        <!-- Live Preview -->
+        <div class="preview-box" id="so-preview" style="display:none;">
+          <span class="preview-icon">🔻</span>
+          <span id="so-preview-text"></span>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-danger btn-lg btn-block" id="btn-stock-out-submit">
+            <i data-lucide="arrow-up-circle"></i> Confirm Stock Out
+          </button>
+          <button type="button" class="btn btn-ghost btn-block" onclick="App.navigate('dashboard')">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────── HISTORY ───────────────── -->
+    <section id="section-history" class="section">
+      <div class="page-header">
+        <h1 class="page-title">History</h1>
+      </div>
+
+      <!-- Sub Navigation Tabs -->
+      <div class="hist-tabs">
+        <button class="hist-tab active" data-histtab="ledger">
+          <i data-lucide="list"></i> Ledger
+        </button>
+        <button class="hist-tab" data-histtab="consumption">
+          <i data-lucide="bar-chart-3"></i> Consumption
+        </button>
+      </div>
+
+      <!-- 1. LEDGER PANEL -->
+      <div class="hist-panel active" id="hist-panel-ledger">
+        <!-- Filters -->
+        <div class="history-filters">
+          <select id="hist-item-filter" style="font-size:14px; padding:11px 12px;">
+            <option value="all">All Items</option>
+          </select>
+          <div class="filter-row">
+            <input type="date" id="hist-from" />
+            <span class="text-muted" style="font-size:12px; flex-shrink:0;">to</span>
+            <input type="date" id="hist-to" />
+            <button class="btn btn-ghost btn-sm" id="btn-hist-clear" style="flex-shrink:0;">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+        </div>
+        <div class="hist-count" id="hist-count"></div>
+
+        <!-- History List -->
+        <div id="history-list" class="history-list-container">
+          <div class="empty-state">
+            <div class="empty-icon-wrap"><i data-lucide="clock"></i></div>
+            <p>No transactions yet.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. CONSUMPTION PANEL -->
+      <div class="hist-panel" id="hist-panel-consumption">
+        <!-- Search bar for consumption -->
+        <div class="search-wrap" style="margin-bottom: 16px;">
+          <i data-lucide="search" class="search-icon"></i>
+          <input type="text" id="cons-search" placeholder="Search items consumption…" autocomplete="off" />
+        </div>
+        <!-- Consumption Cards List -->
+        <div id="consumption-list">
+          <div class="empty-state">
+            <p>Loading consumption stats…</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────── REPORTS ───────────────── -->
+    <section id="section-reports" class="section">
+      <div class="page-header">
+        <h1 class="page-title">Reports</h1>
+      </div>
+
+      <!-- Tabs -->
+      <div class="report-tabs">
+        <button class="report-tab active" data-report="current-stock">📦 Current Stock</button>
+        <button class="report-tab" data-report="low-stock">⚠️ Low Stock</button>
+        <button class="report-tab" data-report="stock-movement">📈 Movement</button>
+      </div>
+
+      <!-- Date range (movement only) -->
+      <div class="report-date-range" id="report-date-range" style="display:none;">
+        <input type="date" id="report-from" />
+        <span class="text-muted" style="font-size:12px; flex-shrink:0;">to</span>
+        <input type="date" id="report-to" />
+      </div>
+
+      <!-- Export buttons -->
+      <div class="export-btns">
+        <button class="btn btn-success" id="btn-export-excel">
+          <i data-lucide="file-spreadsheet"></i> Excel
+        </button>
+        <button class="btn btn-ghost" id="btn-export-pdf">
+          <i data-lucide="file-text"></i> PDF
+        </button>
+      </div>
+
+      <!-- Report table -->
+      <div class="report-table-wrap">
+        <div id="report-table-container">
+          <div class="empty-state"><p>Select a report above.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────── FINANCES ───────────────── -->
+    <section id="section-finances" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Finances</h1>
+          <div class="page-subtitle" id="fin-page-subtitle">Cash & Expense Tracker</div>
+        </div>
+        <!-- Simple Logout Button -->
+        <button class="btn btn-ghost btn-sm" id="btn-fin-logout" style="display:none; padding: 8px 12px; border-radius: 10px; gap: 4px;">
+          <i data-lucide="log-out" style="width: 14px; height: 14px;"></i> Logout
+        </button>
+      </div>
+
+      <!-- Simple Login Panel -->
+      <div id="fin-login-panel" class="form-card" style="display:block; margin-top:20px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+          <span style="font-size:24px;">🔑</span>
+          <h3 style="font-weight:800; font-size:16px; margin: 0;">Admin Access Required</h3>
+        </div>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom: 20px;">Please enter the passcode to view the daily finances and expenses.</p>
+        <form id="fin-login-form" onsubmit="return false;">
+          <div class="form-group">
+            <label class="form-label" for="fin-login-pass">Passcode / Password</label>
+            <input type="password" id="fin-login-pass" placeholder="Enter password" autocomplete="current-password" />
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary btn-lg btn-block" id="btn-fin-login">
+              <i data-lucide="unlock"></i> Login
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Main Finances Area (hidden by default until logged in) -->
+      <div id="fin-main-area" style="display:none;">
+
+        <!-- Financial Summary Cards -->
+        <div class="fin-summary-grid">
+          <div class="fin-stat-card card-net">
+            <div class="fin-card-label">Daily Net Balance</div>
+            <div class="fin-card-value" id="fin-net-val">₹0.00</div>
+          </div>
+          <div class="fin-stat-card card-income">
+            <div class="fin-card-label">Today's Income</div>
+            <div class="fin-card-value text-success" id="fin-inc-val">₹0.00</div>
+            <div class="fin-card-sub">
+              <span>Cash: <strong id="fin-inc-cash">₹0</strong></span> | 
+              <span>Online: <strong id="fin-inc-online">₹0</strong></span>
+            </div>
+          </div>
+          <div class="fin-stat-card card-expense">
+            <div class="fin-card-label">Today's Expenses</div>
+            <div class="fin-card-value text-danger" id="fin-exp-val">₹0.00</div>
+            <div class="fin-card-sub">
+              <span>Cash: <strong id="fin-exp-cash">₹0</strong></span> | 
+              <span>Online: <strong id="fin-exp-online">₹0</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub Navigation Tabs -->
+        <div class="fin-tabs">
+          <button class="fin-tab active" data-fintab="ledger">
+            <i data-lucide="list"></i> Ledger
+          </button>
+          <button class="fin-tab" data-fintab="add-income">
+            <i data-lucide="plus-circle"></i> Add Income
+          </button>
+          <button class="fin-tab" data-fintab="add-expense">
+            <i data-lucide="minus-circle"></i> Add Expense
+          </button>
+        </div>
+
+        <!-- Date Filter (for Ledger) -->
+        <div class="fin-date-row" id="fin-date-filter-row">
+          <span class="text-muted" style="font-size:12px; font-weight: 700; text-transform: uppercase;">Select Date:</span>
+          <input type="date" id="fin-date-picker" />
+        </div>
+
+        <!-- Sub-Tab Panels -->
+        <div class="fin-tab-content">
+          <!-- 1. LEDGER PANEL -->
+          <div class="fin-panel active" id="fin-panel-ledger">
+            <div id="fin-ledger-list" class="fin-list-container">
+              <!-- Dynamically populated by finances.js -->
+            </div>
+          </div>
+
+          <!-- 2. RECORD INCOME PANEL -->
+          <div class="fin-panel" id="fin-panel-add-income">
+            <div class="form-card">
+              <form id="fin-income-form" onsubmit="return false;">
+                <div class="form-group">
+                  <label class="form-label" for="fin-inc-amount">Income Amount (₹) <span>*</span></label>
+                  <input type="number" id="fin-inc-amount" placeholder="Enter amount" min="0.01" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="fin-inc-method">Payment Method <span>*</span></label>
+                  <select id="fin-inc-method">
+                    <option value="CASH">Cash</option>
+                    <option value="ONLINE">Online</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="fin-inc-date">Date <span>*</span></label>
+                  <input type="date" id="fin-inc-date" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="fin-inc-notes">Notes / Source</label>
+                  <textarea id="fin-inc-notes" placeholder="e.g. Sales, catering, others..."></textarea>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn btn-success btn-lg btn-block" id="btn-save-income">
+                    <i data-lucide="plus-circle"></i> Save Income
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- 3. RECORD EXPENSE PANEL -->
+          <div class="fin-panel" id="fin-panel-add-expense">
+            <div class="form-card">
+              <form id="fin-expense-form" onsubmit="return false;">
+                <div class="form-group">
+                  <label class="form-label" for="fin-exp-amount">Expense Amount (₹) <span>*</span></label>
+                  <input type="number" id="fin-exp-amount" placeholder="Enter amount" min="0.01" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="fin-exp-category">Item Purchased <span>*</span></label>
+                  <input type="text" id="fin-exp-category" placeholder="e.g. Milk, Cups, Coffee powder..." autocomplete="off" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="fin-exp-method">Payment Method <span>*</span></label>
+                  <select id="fin-exp-method">
+                    <option value="CASH">Cash</option>
+                    <option value="ONLINE">Online</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="fin-exp-date">Date <span>*</span></label>
+                  <input type="date" id="fin-exp-date" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="fin-exp-notes">Notes / Remarks</label>
+                  <textarea id="fin-exp-notes" placeholder="e.g. Purchased coffee milk packets..."></textarea>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn btn-danger btn-lg btn-block" id="btn-save-expense">
+                    <i data-lucide="minus-circle"></i> Save Expense
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────── SETTINGS ───────────────── -->
+    <section id="section-settings" class="section">
+      <div class="page-header">
+        <h1 class="page-title">Settings</h1>
+      </div>
+
+      <!-- WhatsApp Card -->
+      <div class="settings-card">
+        <div class="settings-card-title">
+          <i data-lucide="message-circle"></i>
+          WhatsApp Alerts (Green-API)
+        </div>
+
+        <div class="info-box">
+          <strong>📱 Setup with Green-API (Free):</strong>
+          <ol>
+            <li>Register at <strong>green-api.com</strong> (Free Developer plan)</li>
+            <li>Scan QR code in dashboard to link your WhatsApp</li>
+            <li>Copy your <strong>Instance ID</strong> and <strong>API Token</strong></li>
+            <li>Enter details below and toggle alerts ON ↓</li>
+          </ol>
+        </div>
+
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Enable WhatsApp Alerts</div>
+            <div class="toggle-sub">Auto-alert when stock is low or out</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="set-enabled" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="set-phone">Recipient WhatsApp Number (with country code)</label>
+          <input type="tel" id="set-phone" placeholder="e.g. 923001234567" inputmode="numeric" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="set-instance">Green-API Instance ID</label>
+          <input type="text" id="set-instance" placeholder="e.g. 7107658894" inputmode="numeric" autocomplete="off" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="set-token">Green-API API Token Instance</label>
+          <input type="text" id="set-token" placeholder="Enter Token Instance" autocomplete="off" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="set-summary-time">Daily Summary Auto-Send Time</label>
+          <input type="time" id="set-summary-time" />
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-primary btn-lg btn-block" id="btn-save-settings">
+            <i data-lucide="save"></i> Save Settings
+          </button>
+          <button type="button" class="btn btn-ghost btn-block" id="btn-test-alert">
+            <i data-lucide="send"></i> Send Test WhatsApp
+          </button>
+        </div>
+      </div>
+
+      <!-- App Info Card -->
+      <div class="settings-card">
+        <div class="settings-card-title">
+          <i data-lucide="info"></i>
+          About
+        </div>
+        <div style="font-size:13px; color:var(--text-secondary); line-height:1.8;">
+          <p>☕ <strong style="color:var(--text-primary)">Dream Cafe Stock Manager</strong></p>
+          <p>Version 1.0 · Mobile Edition</p>
+          <p>Data stored locally on this device</p>
+          <hr class="divider" />
+          <p style="color:var(--text-muted); font-size:11.5px;">Future: Sales · Recipes · POS · Suppliers</p>
+        </div>
+      </div>
+
+    </section>
+
+  </main><!-- /#main-content -->
+
+  <!-- ══════════════════════ BOTTOM SHEET OVERLAY ══════════════════════ -->
+  <div id="bs-overlay"></div>
+
+  <!-- ══════════════════════ MORE BOTTOM SHEET ══════════════════════ -->
+  <div id="more-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-label">More Options</div>
+    <div class="sheet-grid">
+
+      <div class="sheet-nav-item" data-nav="add-item">
+        <div class="sheet-item-icon si-add"><i data-lucide="plus-circle"></i></div>
+        <div>
+          <div class="sheet-item-label">Add Item</div>
+          <div class="sheet-item-sub">Add new product</div>
+        </div>
+      </div>
+
+      <div class="sheet-nav-item" data-nav="reports">
+        <div class="sheet-item-icon si-report"><i data-lucide="bar-chart-2"></i></div>
+        <div>
+          <div class="sheet-item-label">Reports</div>
+          <div class="sheet-item-sub">Export Excel / PDF</div>
+        </div>
+      </div>
+
+      <div class="sheet-nav-item" data-nav="settings">
+        <div class="sheet-item-icon si-set"><i data-lucide="settings"></i></div>
+        <div>
+          <div class="sheet-item-label">Settings</div>
+          <div class="sheet-item-sub">WhatsApp alerts</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════ BOTTOM NAVIGATION ══════════════════════ -->
+  <nav id="bottom-nav" role="navigation" aria-label="Main navigation">
+
+    <div class="bnav-item active" data-nav="dashboard" id="bnav-dashboard">
+      <i data-lucide="home"></i>
+      <span>Home</span>
+    </div>
+
+    <div class="bnav-item" data-nav="inventory" id="bnav-inventory">
+      <i data-lucide="package"></i>
+      <span>Inventory</span>
+    </div>
+
+    <div class="bnav-item" data-nav="finances" id="bnav-finances">
+      <i data-lucide="wallet"></i>
+      <span>Finances</span>
+    </div>
+
+    <div class="bnav-item" data-nav="history" id="bnav-history">
+      <i data-lucide="clock"></i>
+      <span>History</span>
+    </div>
+
+    <div class="bnav-item bnav-more" data-more="true" id="bnav-more">
+      <i data-lucide="grid-2x2"></i>
+      <span>More</span>
+    </div>
+
+  </nav>
+
+  <!-- ══════════════════════ MODAL OVERLAY ══════════════════════ -->
+  <div id="modal-overlay"></div>
+
+  <!-- ══════════════════════ EDIT ITEM MODAL ══════════════════════ -->
+  <div class="modal" id="modal-edit-item">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Edit Item</div>
+      <button class="modal-close" onclick="closeModal('modal-edit-item')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-item-id" />
+
+      <div class="form-group">
+        <label class="form-label" for="edit-item-name">Item Name <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="edit-item-name" autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="edit-item-category">Category <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="edit-item-category" list="cat-list" autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="edit-item-unit">Unit</label>
+        <select id="edit-item-unit">
+          <option value="KG">KG</option>
+          <option value="Gram">Gram</option>
+          <option value="Liter">Liter</option>
+          <option value="Piece">Piece</option>
+          <option value="Packet">Packet</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="edit-item-current">Current Stock</label>
+          <input type="number" id="edit-item-current" min="0" step="0.01" inputmode="decimal" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="edit-item-minimum">Min Stock</label>
+          <input type="number" id="edit-item-minimum" min="0" step="0.01" inputmode="decimal" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary btn-lg btn-block" id="btn-save-edit">
+        <i data-lucide="save"></i> Save Changes
+      </button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal('modal-edit-item')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ TOAST CONTAINER ══════════════════════ -->
+  <div id="toast-container" role="status" aria-live="polite"></div>
+
+  <!-- ══════════════════════ SCRIPTS ══════════════════════ -->
+  <script src="js/db.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/alerts.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/inventory.js"></script>
+  <script src="js/stockIn.js"></script>
+  <script src="js/stockOut.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/reports.js"></script>
+  <script src="js/finances.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>

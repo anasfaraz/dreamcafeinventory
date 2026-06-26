@@ -589,23 +589,13 @@
       <div class="settings-card">
         <div class="settings-card-title">
           <i data-lucide="message-circle"></i>
-          WhatsApp Alerts (Green-API)
-        </div>
-
-        <div class="info-box">
-          <strong>📱 Setup with Green-API (Free):</strong>
-          <ol>
-            <li>Register at <strong>green-api.com</strong> (Free Developer plan)</li>
-            <li>Scan QR code in dashboard to link your WhatsApp</li>
-            <li>Copy your <strong>Instance ID</strong> and <strong>API Token</strong></li>
-            <li>Enter details below and toggle alerts ON ↓</li>
-          </ol>
+          WhatsApp Alerts
         </div>
 
         <div class="toggle-row">
           <div>
             <div class="toggle-label">Enable WhatsApp Alerts</div>
-            <div class="toggle-sub">Auto-alert when stock is low or out</div>
+            <div class="toggle-sub">Get notified when stock runs low or out</div>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="set-enabled" />
@@ -614,7 +604,7 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="set-phone">Recipient WhatsApp Number (with country code)</label>
+          <label class="form-label" for="set-phone">WhatsApp Number (with country code)</label>
           <input type="tel" id="set-phone" placeholder="e.g. 923001234567" inputmode="numeric" />
         </div>
 
@@ -624,12 +614,12 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="set-token">Green-API API Token Instance</label>
-          <input type="text" id="set-token" placeholder="Enter Token Instance" autocomplete="off" />
+          <label class="form-label" for="set-token">Green-API Token</label>
+          <input type="password" id="set-token" placeholder="Enter token" autocomplete="off" />
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="set-summary-time">Daily Summary Auto-Send Time</label>
+          <label class="form-label" for="set-summary-time">Daily Summary Time</label>
           <input type="time" id="set-summary-time" />
         </div>
 
@@ -638,44 +628,32 @@
             <i data-lucide="save"></i> Save Settings
           </button>
           <button type="button" class="btn btn-ghost btn-block" id="btn-test-alert">
-            <i data-lucide="send"></i> Send Test WhatsApp
+            <i data-lucide="send"></i> Send Test Message
           </button>
         </div>
       </div>
 
-      <!-- Cloud Sync Card -->
+      <!-- Cloud Sync Status (read-only, no config exposed) -->
       <div class="settings-card">
-        <div class="settings-card-header-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-          <div class="settings-card-title" style="margin-bottom: 0;">
-            <i data-lucide="cloud"></i>
-            Cloud Synchronization (Firebase)
+        <div class="settings-card-title">
+          <i data-lucide="cloud"></i>
+          Data &amp; Sync
+        </div>
+
+        <div class="sync-status-row" id="sync-status-row">
+          <div class="sync-status-left">
+            <div class="sync-dot" id="sync-dot"></div>
+            <div>
+              <div class="sync-label" id="sync-label">Connecting…</div>
+              <div class="sync-sub" id="sync-sub">Syncing across all devices</div>
+            </div>
           </div>
-          <span class="cloud-status-badge badge-danger" id="cloud-status-badge">Disconnected</span>
+          <span class="sync-pill" id="sync-pill">–</span>
         </div>
 
-        <div class="info-box">
-          <strong>☁️ Share Data Across Multiple Devices (Free):</strong>
-          <ol style="margin-top: 8px; padding-left: 16px; font-size: 12.5px; line-height: 1.6;">
-            <li>Go to <strong style="color:var(--text-primary)">console.firebase.google.com</strong> and create a free project.</li>
-            <li>Register a Web App and copy the config object JSON.</li>
-            <li>Go to the <strong>Firestore Database</strong> section and click "Create Database".</li>
-            <li>Under the <strong>Rules</strong> tab, change <code>allow read, write: if false;</code> to <code>allow read, write: if true;</code> and click Publish.</li>
-            <li>Paste your config JSON below, click <strong>Save Config</strong>, and then migrate your existing data.</li>
-          </ol>
-        </div>
-
-        <div class="form-group" style="margin-top: 16px;">
-          <label class="form-label" for="set-firebase-config">Firebase Configuration JSON</label>
-          <textarea id="set-firebase-config" rows="6" placeholder='{&#10;  "apiKey": "...",&#10;  "authDomain": "...",&#10;  "projectId": "...",&#10;  "appId": "..."&#10;}' style="font-family: monospace; font-size: 12px; width: 100%; border-radius: var(--radius-sm); padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); color: var(--text-primary); outline: none;"></textarea>
-        </div>
-
-        <div class="form-actions">
-          <button type="button" class="btn btn-primary btn-lg btn-block" id="btn-save-firebase">
-            <i data-lucide="save"></i> Save Config
-          </button>
-          <button type="button" class="btn btn-ghost btn-block" id="btn-migrate-firebase" style="display: none; border-color: var(--success); color: var(--success);">
-            <i data-lucide="upload-cloud"></i> Upload Local Data to Cloud
-          </button>
+        <div class="sync-info-row">
+          <i data-lucide="shield-check" style="width:14px;height:14px;color:var(--accent);flex-shrink:0;"></i>
+          <span>All data is end-to-end synced in real time across every device using the same app.</span>
         </div>
       </div>
 
@@ -685,16 +663,28 @@
           <i data-lucide="info"></i>
           About
         </div>
-        <div style="font-size:13px; color:var(--text-secondary); line-height:1.8;">
-          <p>☕ <strong style="color:var(--text-primary)">Dream Cafe Stock Manager</strong></p>
-          <p>Version 1.0 · Mobile Edition</p>
-          <p>Data stored locally on this device</p>
-          <hr class="divider" />
-          <p style="color:var(--text-muted); font-size:11.5px;">Future: Sales · Recipes · POS · Suppliers</p>
+        <div class="about-rows">
+          <div class="about-row">
+            <span class="about-key">App</span>
+            <span class="about-val">Dream Cafe Stock Manager</span>
+          </div>
+          <div class="about-row">
+            <span class="about-key">Version</span>
+            <span class="about-val">2.0 · Cloud Edition</span>
+          </div>
+          <div class="about-row">
+            <span class="about-key">Storage</span>
+            <span class="about-val">Firebase Firestore</span>
+          </div>
+          <div class="about-row">
+            <span class="about-key">Platform</span>
+            <span class="about-val">Mobile PWA</span>
+          </div>
         </div>
       </div>
 
     </section>
+
 
   </main><!-- /#main-content -->
 

@@ -35,6 +35,29 @@ function formatDate(dateStr) {
 // ── Settings Module ────────────────────────────────────────────────────────────
 
 const Settings = (() => {
+  // Update the sync status row in the Settings UI
+  const updateSyncStatus = () => {
+    const dot   = document.getElementById('sync-dot');
+    const label = document.getElementById('sync-label');
+    const sub   = document.getElementById('sync-sub');
+    const pill  = document.getElementById('sync-pill');
+    if (!dot) return;
+
+    if (DB.Cloud.isEnabled()) {
+      dot.className   = 'sync-dot dot-online';
+      label.textContent = 'Cloud Sync Active';
+      sub.textContent   = 'All changes sync instantly across devices';
+      pill.textContent  = 'Live';
+      pill.className    = 'sync-pill pill-live';
+    } else {
+      dot.className   = 'sync-dot dot-offline';
+      label.textContent = 'Offline Mode';
+      sub.textContent   = 'Data saved locally on this device only';
+      pill.textContent  = 'Local';
+      pill.className    = 'sync-pill pill-local';
+    }
+  };
+
   const render = () => {
     const s = DB.getSettings();
     document.getElementById('set-phone').value = s.whatsappPhone || '';
@@ -42,103 +65,32 @@ const Settings = (() => {
     document.getElementById('set-token').value = s.greenApiToken || '';
     document.getElementById('set-summary-time').value = s.dailySummaryTime || '21:00';
     document.getElementById('set-enabled').checked = !!s.alertsEnabled;
-
-    // Firebase configuration rendering
-    const fbTextarea = document.getElementById('set-firebase-config');
-    if (fbTextarea) {
-      fbTextarea.value = s.firebaseConfig || '';
-    }
-
-    const badge = document.getElementById('cloud-status-badge');
-    const btnMigrate = document.getElementById('btn-migrate-firebase');
-    if (badge) {
-      if (DB.Cloud.isEnabled()) {
-        badge.textContent = 'Connected';
-        badge.classList.remove('badge-danger');
-        badge.classList.add('badge-success');
-      } else {
-        badge.textContent = 'Disconnected';
-        badge.classList.remove('badge-success');
-        badge.classList.add('badge-danger');
-      }
-    }
-    if (btnMigrate) {
-      btnMigrate.style.display = DB.Cloud.isEnabled() ? 'block' : 'none';
-    }
+    updateSyncStatus();
   };
 
   const save = () => {
     const current = DB.getSettings();
     DB.saveSettings({
       ...current,
-      whatsappPhone: document.getElementById('set-phone').value.trim(),
+      whatsappPhone:    document.getElementById('set-phone').value.trim(),
       greenApiInstance: document.getElementById('set-instance').value.trim(),
-      greenApiToken: document.getElementById('set-token').value.trim(),
+      greenApiToken:    document.getElementById('set-token').value.trim(),
       dailySummaryTime: document.getElementById('set-summary-time').value || '21:00',
-      alertsEnabled: document.getElementById('set-enabled').checked
+      alertsEnabled:    document.getElementById('set-enabled').checked
     });
     showToast('Settings saved! ✅', 'success');
-  };
-
-  const saveFirebase = () => {
-    const current = DB.getSettings();
-    const configStr = document.getElementById('set-firebase-config').value.trim();
-    if (configStr) {
-      try {
-        JSON.parse(configStr);
-      } catch (e) {
-        showToast('Invalid Firebase Config JSON format!', 'error');
-        return;
-      }
-    }
-    DB.saveSettings({
-      ...current,
-      firebaseConfig: configStr
-    });
-    DB.Cloud.init();
-    render();
-    if (DB.Cloud.isEnabled()) {
-      showToast('Firebase Config saved & Connected! 🟢', 'success');
-    } else {
-      showToast('Firebase Config saved (Disconnected) 🔴', 'warning');
-    }
-  };
-
-  const migrateFirebase = async () => {
-    if (!DB.Cloud.isEnabled()) {
-      showToast('Firebase is not connected!', 'error');
-      return;
-    }
-    const btn = document.getElementById('btn-migrate-firebase');
-    const originalText = btn.innerHTML;
-    try {
-      btn.disabled = true;
-      btn.innerHTML = `<i data-lucide="loader" class="animate-spin"></i> Uploading...`;
-      if (window.lucide) lucide.createIcons();
-      showToast('Migrating local data to cloud...', 'info');
-      await DB.Cloud.uploadLocalData();
-      showToast('Data uploaded to cloud successfully! 📤', 'success');
-    } catch (err) {
-      console.error(err);
-      showToast('Migration failed: ' + err.message, 'error');
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = originalText;
-      if (window.lucide) lucide.createIcons();
-    }
   };
 
   const init = () => {
     document.getElementById('btn-save-settings').addEventListener('click', save);
     document.getElementById('btn-test-alert').addEventListener('click', () => Alerts.testAlert());
-    document.getElementById('btn-save-firebase').addEventListener('click', saveFirebase);
-    document.getElementById('btn-migrate-firebase').addEventListener('click', migrateFirebase);
   };
 
-  return { render, init };
+  return { render, init, updateSyncStatus };
 })();
 
 // ── Add Item Module ────────────────────────────────────────────────────────────
+
 
 const AddItem = (() => {
   const render = () => {};
@@ -255,8 +207,9 @@ const App = (() => {
   const init = () => {
     SEED_DATA.initialize();
 
-    // Initialize cloud sync connection
+    // Initialize cloud sync — update status pill once connection resolves
     DB.Cloud.init();
+    setTimeout(() => Settings.updateSyncStatus(), 3000);
 
     Inventory.init();
     StockIn.init();
@@ -266,6 +219,7 @@ const App = (() => {
     Settings.init();
     AddItem.init();
     Finances.init();
+
 
     // Start background check for Daily Summary every 60 seconds
     Alerts.checkAndSendDailySummary();

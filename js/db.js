@@ -38,45 +38,47 @@ const DB = (() => {
   const Cloud = {
     isEnabled: () => !!firestoreDb,
     init: () => {
-      // Unsubscribe existing listeners
       Cloud.disconnect();
 
-      const settings = getSettings();
-      let config = null;
-
-      if (HARDCODED_FIREBASE_CONFIG && HARDCODED_FIREBASE_CONFIG.apiKey) {
-        config = HARDCODED_FIREBASE_CONFIG;
-      } else if (settings.firebaseConfig) {
-        try {
-          config = JSON.parse(settings.firebaseConfig);
-        } catch (e) {
-          console.error("[DreamCafe] Failed to parse custom Firebase config:", e);
-        }
-      }
+      const config = HARDCODED_FIREBASE_CONFIG && HARDCODED_FIREBASE_CONFIG.apiKey
+        ? HARDCODED_FIREBASE_CONFIG
+        : (() => {
+            try { return JSON.parse(getSettings().firebaseConfig || ''); } catch { return null; }
+          })();
 
       if (!config) return;
 
       try {
-        // Initialize Firebase with unique App name to allow hot re-init
-        firebaseApp = firebase.initializeApp(config, "dreamcafe_app_" + Date.now());
+        firebaseApp = firebase.initializeApp(config, 'dreamcafe_app_' + Date.now());
         firestoreDb = firebaseApp.firestore();
 
-        // Enable Firestore offline persistence
-        firestoreDb.enablePersistence().catch(err => {
-          console.warn("[DreamCafe] Firestore persistence error:", err.code);
+        // Enable offline persistence so app works without internet too
+        firestoreDb.enablePersistence({ synchronizeTabs: true }).catch(err => {
+          console.warn('[DreamCafe] Persistence error:', err.code);
         });
 
-        // Set up real-time listener for Inventory
+        // ── INVENTORY listener ───────────────────────────
         const unsubInventory = firestoreDb.collection('inventory').onSnapshot(snapshot => {
-          const isMigrated = localStorage.getItem('dcm_cloud_migrated') === 'true';
-          if (snapshot.empty && !isMigrated) {
-            console.log("[DreamCafe] Firestore inventory is empty and this device is not migrated yet. Skipping overwrite to protect local data.");
+          if (snapshot.empty) {
+            // Cloud is empty — check if we have REAL local data (not seed placeholders)
+            const localItems = _get(KEYS.INVENTORY, []);
+            const realItems = localItems.filter(i => !i._isSeed);
+            if (realItems.length > 0) {
+              // Auto-upload real data from this phone to the cloud
+              console.log('[DreamCafe] Cloud empty, auto-uploading local inventory...');
+              const batch = firestoreDb.batch();
+              realItems.forEach(item => {
+                batch.set(firestoreDb.collection('inventory').doc(item.id), item);
+              });
+              batch.commit().then(() => {
+                console.log('[DreamCafe] Auto-upload inventory done ✅');
+              }).catch(e => console.error('[DreamCafe] Auto-upload inventory error:', e));
+            }
+            // If cloud is empty and we only have seed data, do nothing (wait)
             return;
           }
-          if (!snapshot.empty) {
-            localStorage.setItem('dcm_cloud_migrated', 'true');
-          }
 
+          // Cloud has data — pull it, replacing any local/seed data
           const items = [];
           snapshot.forEach(doc => {
             const data = doc.data();
@@ -90,20 +92,21 @@ const DB = (() => {
           if (window.App && typeof App.refreshCurrentSection === 'function') {
             App.refreshCurrentSection();
           }
-        }, err => {
-          console.error("[DreamCafe] Firestore inventory stream error:", err);
-        });
+        }, err => console.error('[DreamCafe] Inventory stream error:', err));
 
-        // Set up real-time listener for Transactions
+        // ── TRANSACTIONS listener ────────────────────────
         const unsubTransactions = firestoreDb.collection('transactions').onSnapshot(snapshot => {
-          const isMigrated = localStorage.getItem('dcm_cloud_migrated') === 'true';
-          if (snapshot.empty && !isMigrated) {
+          if (snapshot.empty) {
+            const localTxns = _get(KEYS.TRANSACTIONS, []);
+            if (localTxns.length > 0) {
+              const batch = firestoreDb.batch();
+              localTxns.forEach(t => {
+                batch.set(firestoreDb.collection('transactions').doc(t.id), t);
+              });
+              batch.commit().catch(e => console.error('[DreamCafe] Auto-upload txns error:', e));
+            }
             return;
           }
-          if (!snapshot.empty) {
-            localStorage.setItem('dcm_cloud_migrated', 'true');
-          }
-
           const txns = [];
           snapshot.forEach(doc => {
             const data = doc.data();
@@ -118,20 +121,21 @@ const DB = (() => {
           if (window.App && typeof App.refreshCurrentSection === 'function') {
             App.refreshCurrentSection();
           }
-        }, err => {
-          console.error("[DreamCafe] Firestore transactions stream error:", err);
-        });
+        }, err => console.error('[DreamCafe] Transactions stream error:', err));
 
-        // Set up real-time listener for Finances
+        // ── FINANCES listener ────────────────────────────
         const unsubFinances = firestoreDb.collection('finances').onSnapshot(snapshot => {
-          const isMigrated = localStorage.getItem('dcm_cloud_migrated') === 'true';
-          if (snapshot.empty && !isMigrated) {
+          if (snapshot.empty) {
+            const localFin = _get(KEYS.FINANCES, []);
+            if (localFin.length > 0) {
+              const batch = firestoreDb.batch();
+              localFin.forEach(r => {
+                batch.set(firestoreDb.collection('finances').doc(r.id), r);
+              });
+              batch.commit().catch(e => console.error('[DreamCafe] Auto-upload finances error:', e));
+            }
             return;
           }
-          if (!snapshot.empty) {
-            localStorage.setItem('dcm_cloud_migrated', 'true');
-          }
-
           const records = [];
           snapshot.forEach(doc => {
             const data = doc.data();
@@ -145,54 +149,41 @@ const DB = (() => {
           if (window.App && typeof App.refreshCurrentSection === 'function') {
             App.refreshCurrentSection();
           }
-        }, err => {
-          console.error("[DreamCafe] Firestore finances stream error:", err);
-        });
+        }, err => console.error('[DreamCafe] Finances stream error:', err));
 
         cloudListeners.push(unsubInventory, unsubTransactions, unsubFinances);
-        console.log("[DreamCafe] Cloud Sync initialized successfully 🟢");
+        console.log('[DreamCafe] Cloud Sync ready 🟢');
+
       } catch (err) {
-        console.error("[DreamCafe] Failed to initialize Firebase:", err);
+        console.error('[DreamCafe] Firebase init error:', err);
         Cloud.disconnect();
       }
     },
+
     disconnect: () => {
-      cloudListeners.forEach(unsub => {
-        try { unsub(); } catch {}
-      });
+      cloudListeners.forEach(unsub => { try { unsub(); } catch {} });
       cloudListeners = [];
       firebaseApp = null;
       firestoreDb = null;
-      console.log("[DreamCafe] Cloud Sync disconnected 🔴");
     },
+
     uploadLocalData: async () => {
-      if (!firestoreDb) throw new Error("Firebase not connected");
-
+      if (!firestoreDb) throw new Error('Firebase not connected');
       const batch = firestoreDb.batch();
-      
-      const items = getInventory();
-      items.forEach(item => {
-        const ref = firestoreDb.collection('inventory').doc(item.id);
-        batch.set(ref, item);
+      getInventory().filter(i => !i._isSeed).forEach(item => {
+        batch.set(firestoreDb.collection('inventory').doc(item.id), item);
       });
-
-      const txns = getTransactions();
-      txns.forEach(t => {
-        const ref = firestoreDb.collection('transactions').doc(t.id);
-        batch.set(ref, t);
+      getTransactions().forEach(t => {
+        batch.set(firestoreDb.collection('transactions').doc(t.id), t);
       });
-
-      const records = getFinances();
-      records.forEach(r => {
-        const ref = firestoreDb.collection('finances').doc(r.id);
-        batch.set(ref, r);
+      getFinances().forEach(r => {
+        batch.set(firestoreDb.collection('finances').doc(r.id), r);
       });
-
       await batch.commit();
-      localStorage.setItem('dcm_cloud_migrated', 'true');
-      console.log("[DreamCafe] Local data uploaded to Firestore successfully! 📤");
+      console.log('[DreamCafe] Manual upload to Firestore done 📤');
     }
   };
+
 
   // ── Inventory ─────────────────────────────────────────
   const getInventory = () => _get(KEYS.INVENTORY, []);

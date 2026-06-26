@@ -19,9 +19,21 @@ const SEED_DATA = (() => {
   ];
 
   const initialize = () => {
+    // Only seed local storage if completely empty.
+    // IMPORTANT: Write directly to localStorage (bypass DB.addItem) so we NEVER
+    // push seed data to Firestore. Real Firestore data will overwrite this
+    // placeholder once the snapshot listener fires.
     if (DB.getInventory().length === 0) {
-      items.forEach(item => DB.addItem(item));
-      console.log('[DreamCafe] Seed data loaded — 14 items.');
+      const seeded = items.map(item => ({
+        ...item,
+        id: DB.generateId(),
+        createdDate: new Date().toISOString().split('T')[0],
+        currentStock: Number(item.currentStock),
+        minimumStock: Number(item.minimumStock),
+        _isSeed: true   // marker so we can identify placeholder items
+      }));
+      DB.saveInventory(seeded);
+      console.log('[DreamCafe] Seed placeholder loaded locally — waiting for cloud sync...');
     }
   };
 
